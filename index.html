@@ -169,8 +169,7 @@
       ingredients: $("ingredients").value,
       steps: $("steps").value
     };
-    if (!validRecipe(recipe)) return;
-    $("servings").value = recipe.baseServings;
+        if (!validRecipe(recipe)) return;
     render();
     try {
       localStorage.setItem(storageKey, JSON.stringify(recipe));
