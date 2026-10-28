@@ -1,0 +1,178 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="theme-color" content="#286447">
+  <title>My Recipes</title>
+  <style>
+    * { box-sizing: border-box; }
+    body {
+      margin: 0; background: #f6f5ef; color: #23352b;
+      font: 17px/1.5 system-ui, sans-serif;
+    }
+    main { max-width: 720px; margin: auto; padding: 24px 16px; }
+    h1 { margin-bottom: 4px; }
+    .card {
+      background: white; padding: 20px; margin-top: 20px;
+      border-radius: 16px; box-shadow: 0 2px 12px #0000000d;
+    }
+    label { display: block; font-weight: 600; margin-top: 16px; }
+    input, textarea, button {
+      font: inherit; border-radius: 8px; padding: 10px;
+    }
+    input, textarea {
+      width: 100%; border: 1px solid #aebbb2;
+      background: white; color: #23352b;
+    }
+    textarea { min-height: 150px; resize: vertical; }
+    button {
+      background: #286447; color: white; border: 0;
+      cursor: pointer; margin-top: 18px;
+    }
+    li { margin-bottom: 10px; overflow-wrap: anywhere; }
+    .hint { color: #526359; font-size: 14px; }
+    #status { min-height: 1.5em; }
+  </style>
+</head>
+<body>
+<main>
+  <h1>My Recipes</h1>
+  <p>Your familiar dishes, in the amounts you need.</p>
+
+  <section class="card" aria-labelledby="recipeHeading">
+    <h2 id="recipeHeading">Recipe</h2>
+    <label for="servings">Servings to make</label>
+    <input id="servings" type="number" min="0.1" step="any" value="4">
+    <h3>Ingredients</h3>
+    <ul id="ingredientList"></ul>
+    <h3>Cooking steps</h3>
+    <ol id="stepList"></ol>
+  </section>
+
+  <details class="card" open>
+    <summary>Edit recipe</summary>
+    <form id="recipeForm">
+      <label for="title">Recipe name</label>
+      <input id="title" required maxlength="120">
+
+      <label for="baseServings">Original recipe servings</label>
+      <input id="baseServings" type="number"
+             min="0.1" step="any" required>
+
+      <label for="ingredients">Ingredients</label>
+      <p class="hint" id="ingredientHelp">
+        One per line: amount | unit | ingredient.
+        Use decimals, such as 0.5 for half.
+        For an unmeasured item: | | salt to taste
+      </p>
+      <textarea id="ingredients" required
+                aria-describedby="ingredientHelp"></textarea>
+
+      <label for="steps">Cooking steps — one per line</label>
+      <textarea id="steps" required></textarea>
+
+      <button type="submit">Save recipe</button>
+      <p id="status" role="status"></p>
+    </form>
+  </details>
+  <p class="hint">
+    Saved recipes stay in this browser on this device.
+    Offline support will be added in the next files.
+  </p>
+</main>
+
+<script>
+  const $ = id => document.getElementById(id);
+  const storageKey = "my-recipes-v1";
+  const starter = {
+    title: "Your first recipe",
+    baseServings: 4,
+    ingredients: "1 | cup | rice\n2 | cups | water\n | | salt to taste",
+    steps: "Replace these with your own cooking instructions.\nSave your recipe, then change the servings above."
+  };
+
+  function validRecipe(value) {
+    return value && typeof value.title === "string" &&
+      Number.isFinite(value.baseServings) && value.baseServings > 0 &&
+      typeof value.ingredients === "string" &&
+      typeof value.steps === "string";
+  }
+
+  let recipe = { ...starter };
+  try {
+    const saved = JSON.parse(localStorage.getItem(storageKey));
+    if (validRecipe(saved)) recipe = saved;
+  } catch {
+    $("status").textContent = "Saved data could not be loaded.";
+  }
+
+  function fillEditor() {
+    $("title").value = recipe.title;
+    $("baseServings").value = recipe.baseServings;
+    $("ingredients").value = recipe.ingredients;
+    $("steps").value = recipe.steps;
+    $("servings").value = recipe.baseServings;
+  }
+
+  function lines(text) {
+    return text.split("\n").map(line => line.trim()).filter(Boolean);
+  }
+
+  function render() {
+    $("recipeHeading").textContent = recipe.title;
+    const servings = Number($("servings").value);
+    if (!Number.isFinite(servings) || servings <= 0) return;
+    const factor = servings / recipe.baseServings;
+    $("ingredientList").replaceChildren();
+    for (const line of lines(recipe.ingredients)) {
+      const [amount, unit, ...name] = line.split("|").map(s => s.trim());
+      const item = document.createElement("li");
+      if (name.length && amount !== "" &&
+          Number.isFinite(Number(amount)) && Number(amount) >= 0) {
+        const quantity = Number(amount) * factor;
+        item.textContent = [
+          quantity.toLocaleString(undefined, { maximumFractionDigits: 3 }),
+          unit, name.join(" | ")
+        ].filter(Boolean).join(" ");
+      } else {
+        item.textContent = name.length
+          ? [amount, unit, name.join(" | ")].filter(Boolean).join(" ")
+          : line;
+      }
+      $("ingredientList").append(item);
+    }
+    $("stepList").replaceChildren();
+    for (const text of lines(recipe.steps)) {
+      const item = document.createElement("li");
+      item.textContent = text;
+      $("stepList").append(item);
+    }
+  }
+
+  $("servings").addEventListener("input", render);
+  $("recipeForm").addEventListener("submit", event => {
+    event.preventDefault();
+    recipe = {
+      title: $("title").value.trim() || "Untitled recipe",
+      baseServings: Number($("baseServings").value),
+      ingredients: $("ingredients").value,
+      steps: $("steps").value
+    };
+    if (!validRecipe(recipe)) return;
+    $("servings").value = recipe.baseServings;
+    render();
+    try {
+      localStorage.setItem(storageKey, JSON.stringify(recipe));
+      $("status").textContent = "Recipe saved on this device.";
+    } catch {
+      $("status").textContent =
+        "Recipe updated, but this browser could not save it.";
+    }
+  });
+
+  fillEditor();
+  render();
+</script>
+</body>
+</html>
