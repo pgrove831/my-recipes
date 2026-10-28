@@ -5,6 +5,16 @@
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <meta name="theme-color" content="#286447">
   <title>My Recipes</title>
+    <link rel="manifest" href="./manifest.webmanifest">
+  <script>
+    if ("serviceWorker" in navigator) {
+      window.addEventListener("load", () => {
+        navigator.serviceWorker.register("./sw.js").catch(error => {
+          console.error("Offline support could not start:", error);
+        });
+      });
+    }
+  </script>
   <style>
     * { box-sizing: border-box; }
     body {
