@@ -1,0 +1,12 @@
+{
+  "name": "My Recipes",
+  "short_name": "Recipes",
+  "description": "Editable recipes with ingredient scaling and cooking steps.",
+  "id": "./",
+  "start_url": "./",
+  "scope": "./",
+  "display": "standalone",
+  "background_color": "#f6f5ef",
+  "theme_color": "#286447",
+  "lang": "en"
+}
